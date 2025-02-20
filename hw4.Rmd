@@ -47,7 +47,6 @@ ggplot() + geom_histogram(aes(x = sim_health$nflip), binwidth = 1)
 The null hypothesis is that on average, restaurants in the city are cited for health code violations at the same 3% baseline rate. The test statistic is the number of restaurants that get health code violations out of the total number of inspections. The P-Value I got is 1e-04, which makes me think that the null hypothesis may not be true and that Gourmet Bites is getting significantly higher healthcare violations.
 
 # **Problem 3**
-
 ```{r echo=FALSE}
 total_jurors <- 240  # Total number of jurors selected
 expected_proportions <- c(0.30, 0.25, 0.20, 0.15, 0.10)  # County proportions
@@ -55,7 +54,10 @@ observed_counts <- c(85, 56, 59, 27, 13)  # Observed jurors per group
 
 tibble(observed = observed_counts, expected = expected_proportions*240)
 
-chi2 = chi_squared_statistic(simulated_counts, total_jurors*expected_proportions)
+chi_squared_statistic = function(observed, expected) {
+  sum((observed - expected)^2 / expected)
+}
+chi2 = chi_squared_statistic(observed_counts, total_jurors*expected_proportions)
 
 num_simulations = 100000
 chi2_sim = do(num_simulations)*{
@@ -75,7 +77,8 @@ my_chi2
 sum(chi2_sim >= my_chi2)/100000
 ```
 
-I created a tibble of the observed jury counts for each group and the expected jury counts. My null hypothesis is that there is no systematic bias in jury selection, and I calculated a chi statistic of 12.42639. From there, I got a P-Value of 0.01452. This could suggest that there is evidence of systematic bias in jury selection, and this could be ran multiple times to see if the P-Value changes.
+I created a tibble of the observed jury counts for each group and the expected jury counts. My null hypothesis is that there is no systematic bias in jury selection, and I calculated a chi statistic of 12.42639. From there, I got a P-Value of 0.01452. This could suggest that there is evidence of systematic bias in jury selection, and this could be ran multiple times to see if the P-Value changes. Other potential explanations might just be random chance, or exemptions towards jury duty.
+
 
 # **Problem 4**
 
@@ -124,41 +127,25 @@ sentences <- c(
   "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
 )
 
-
-observed_chi_sq <- sapply(sentences, calculate_chi_squared, freq_table = letter_frequencies)
-
-num_simulations <- 10000
 p_values <- numeric(length(sentences))
-
-# Loop through each sentence
-for (i in seq_along(sentences)) {
-  # Simulate chi-squared values
-  chi2_sim <- replicate(num_simulations, {
-    # 1. Simulate data based on EXPECTED frequencies (Crucial!)
-    simulated_counts <- rmultinom(1, sum(nchar(sentences[i])), prob = letter_frequencies[, 2])
-    simulated_freq <- data.frame(Letter = letter_frequencies$Letter, Probability = simulated_counts / sum(simulated_counts))
-
-    # 2. Calculate chi-squared for the SIMULATED data
-    if (simulated_freq$Probability[i] == 0) {
-      p_values[i] <- 0
-    }
-
-    x <- calculate_chi_squared(sentences[i], simulated_freq)
-    
-  }) 
-
-  # Calculate p-value
-  p_values[i] <- sum(chi2_sim >= observed_chi_sq[i]) / num_simulations
+for (i in 1:length(sentences)) {
+  test_chi_squared <- calculate_chi_squared(sentences[i], letter_frequencies)
+  p_values[i] <- (sum(chi_sq_values >= test_chi_squared))/56745 # Calculate p-value
 }
 
-# Create a data frame with results
-p_values_df <- tibble(
-  sentence_id = 1:length(sentences),
-  chi_sq = observed_chi_sq,
-  p_value = p_values
-)
+p_values_table <- data.frame(Sentence = 1:length(sentences), P_value = round(p_values, 3))
+print(p_values_table)
+
+# Identify the watermarked sentence
+watermarked_sentence <- which.min(p_values_table$P_value)
+print(paste("The watermarked sentence is:", watermarked_sentence))
+
+
+```
 
 # Print the results
 print(p_values_df)
 
 ```
+
+The sentence with the lowest P value is number 6, which is how I conclude that it is watermarked. A lower P value indicates a statistically significant difference, which is what would have happened if the frequency distribution was adjusted.
